@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>選擇座位</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="choose">
+        <select v-model="selectedEmployee" @change="employeeChanged">
+            <option v-for="employee in employees" :value="employee.empId">{{ employee.name }} ({{ employee.empId }})</option>
+        </select>
+
+        <div v-for="floor in floors" :key="floor.floorNo">
+            <h3>Floor {{ floor.floorNo }}</h3>
+            <div v-for="seat in floor.seats" :key="seat.seq" :style="getSeatStyle(seat)" @click="selectSeat(seat)">
+                Seat {{ seat.seatNo }} <span v-if="seat.emp">{{ seat.emp.empId }}</span>
+            </div>
+        </div>
+
+        <button @click="submitChanges">Submit</button>
+    </div>
+
+    <script>
+    new Vue({
+        el: '#choose',
+        data: {
+            floors: [],
+            employees: [],
+            selectedEmployee: null,
+            selectedSeat: null
+        },
+        methods: {
+            fetchSeats() {
+                axios.get('/seat/seats')
+                    .then(response => {
+                        this.floors = response.data;
+                    });
+            },
+            fetchEmployees() {
+                axios.get('/seat/emps')
+                    .then(response => {
+                        this.employees = response.data;
+                    });
+            },
+            getSeatStyle(seat) {
+                if (seat.emp) {
+                    return 'background-color: red;'; 
+                } else if (this.selectedSeat && this.selectedSeat.seq === seat.seq) {
+                    return 'background-color: green;'; 
+                } else {
+                    return 'background-color: gray;'; 
+                }
+            },
+            selectSeat(seat) {
+                if (!seat.emp) {
+                    this.selectedSeat = seat;
+                }
+            },
+            employeeChanged() {
+                this.selectedSeat = null;
+            },
+            submitChanges() {
+                if (this.selectedSeat && this.selectedEmployee) {
+                    axios.post('/seat/changeSeat', {
+                        empId: this.selectedEmployee,
+                        seq: this.selectedSeat.seq
+                    }).then(response => {
+                        this.fetchSeats();
+                        this.selectedSeat = null;
+                        this.selectedEmployee = null;
+                    });
+                }
+            }
+        },
+        created() {
+            this.fetchSeats();
+            this.fetchEmployees();
+        }
+    });
+    </script>
+</body>
+</html>
